@@ -1827,7 +1827,7 @@ end
             output = IOBuffer()
             expected_entries = Any[]
             for seqrec in open(filename, FASTA)
-                write(output, seqrec)
+                print(output, seqrec)
                 push!(expected_entries, seqrec)
             end
 
@@ -1871,7 +1871,7 @@ end
             output = IOBuffer()
             expected_entries = Any[]
             for seqrec in open(filename, FASTQ)
-                write(output, seqrec)
+                print(output, seqrec)
                 push!(expected_entries, seqrec)
             end
 

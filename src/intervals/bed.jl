@@ -15,14 +15,12 @@ block_sizes::Vector{Int}
 block_firsts::Vector{Int}
 end
 
-
 	function 	BEDMetadata()
 	return BEDMetadata(0, StringField(), 0, 0, 0, RGB{Float32}(0.0, 0.0, 0.0),
 	0, Int[], Int[])
 end
 
-
-function copy(metadata::BEDMetadata)
+function Base.copy(metadata::BEDMetadata)
 	return BEDMetadata(
 	metadata.used_fields, copy(metadata.name),
 	metadata.score, metadata.thick_first, metadata.thick_last,
@@ -31,8 +29,7 @@ function copy(metadata::BEDMetadata)
 	metadata.block_firsts[1:metadata.block_count])
 end
 
-
-function (==)(a::BEDMetadata, b::BEDMetadata)
+function Base.(:(==))(a::BEDMetadata, b::BEDMetadata)
 	if a.used_fields != b.used_fields
 		return false
 	end
@@ -71,19 +68,81 @@ end
 #function show(io::IO, metadata::BEDMetadata)
 	#end
 
-
 "An `Interval` with associated metadata from a BED file"
 typealias BEDInterval Interval{BEDMetadata}
 
+function Base.print(out::IO, interval::BEDInterval)
+	print(out, interval.seqname, '\t', interval.first - 1, '\t', interval.last)
+	write_optional_fields(out, interval)
+	println(out)
+	end
 
-const _bedparser_start  = 41
-const _bedparser_first_final  = 41
-const _bedparser_error  = 0
-const _bedparser_en_main  = 41
-const __bedparser_nfa_targs = Int8[ 0, 0 ,  ]
-const __bedparser_nfa_offsets = Int8[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,  ]
-const __bedparser_nfa_push_actions = Int8[ 0, 0 ,  ]
-const __bedparser_nfa_pop_trans = Int8[ 0, 0 ,  ]
+function write_optional_fields(out::IO, interval::BEDInterval, leadingtab::Bool=true)
+	if 	interval.metadata.used_fields >= 1
+	if leadingtab
+		print(out, '\t')
+	end
+	print(out, interval.metadata.name)
+else return end
+
+if interval.metadata.used_fields >= 2
+	print(out, '\t', interval.metadata.score)
+else return end
+
+if interval.metadata.used_fields >= 3
+	print(out, '\t', interval.strand)
+else return end
+
+if interval.metadata.used_fields >= 4
+	print(out, '\t', interval.metadata.thick_first - 1)
+else return end
+
+if interval.metadata.used_fields >= 5
+	print(out, '\t', interval.metadata.thick_last)
+else return end
+
+if interval.metadata.used_fields >= 6
+	item_rgb = interval.metadata.item_rgb
+	print(out, '\t',
+	round(Int, 255 * item_rgb.r), ',',
+	round(Int, 255 * item_rgb.g), ',',
+	round(Int, 255 * item_rgb.b))
+else return end
+
+if interval.metadata.used_fields >= 7
+	print(out, '\t', interval.metadata.block_count)
+else return end
+
+if interval.metadata.used_fields >= 8
+	block_sizes = interval.metadata.block_sizes
+	if !isempty(block_sizes)
+		print(out, '\t', block_sizes[1])
+		for i in 2:length(block_sizes)
+		print(out, ',', block_sizes[i])
+	end
+end
+else 	return end
+
+if interval.metadata.used_fields >= 9
+	block_firsts = interval.metadata.block_firsts
+	if !isempty(block_firsts)
+		print(out, '\t', block_firsts[1] - 1)
+		for i in 2:length(block_firsts)
+		print(out, ',', block_firsts[i] - 1)
+	end
+end
+end
+	end
+
+
+const bedparser_start  = 41
+const bedparser_first_final  = 41
+const bedparser_error  = 0
+const bedparser_en_main  = 41
+const _bedparser_nfa_targs = Int8[ 0, 0 ,  ]
+const _bedparser_nfa_offsets = Int8[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,  ]
+const _bedparser_nfa_push_actions = Int8[ 0, 0 ,  ]
+const _bedparser_nfa_pop_trans = Int8[ 0, 0 ,  ]
 type BEDParser <: AbstractParser
 state::Ragel.State
 
@@ -95,31 +154,28 @@ block_size_idx::Int
 block_first_idx::Int
 
 function BEDParser(input::BufferedInputStream)
-begin
-	cs = convert( Int , _bedparser_start );
-
+	return new(Ragel.State(bedparser_start, input), 0, 0, 0, 1, 1)
+	end
 end
-return new(Ragel.State(cs, input), 0.0, 0.0, 0.0, 1, 1)
-end
-end
-
 
 function Intervals.metadatatype(::BEDParser)
 return BEDMetadata
 end
 
-
-function eltype(::Type{BEDParser})
+function Base.eltype(::Type{BEDParser})
 return BEDInterval
 end
 
-
-function open(input::BufferedInputStream, ::Type{BED})
+function Base.open(input::BufferedInputStream, ::Type{BED})
 return BEDParser(input)
 end
 
+function IntervalCollection(interval_stream::BEDParser)
+intervals = collect(BEDInterval, interval_stream)
+return IntervalCollection{BEDMetadata}(intervals, true)
+end
 
-Ragel.@generate_read_fuction("_bedparser", BEDParser, BEDInterval,
+Ragel.@generate_read_fuction("bedparser", BEDParser, BEDInterval,
 begin
 begin
 if ( p == pe  )
@@ -274,7 +330,7 @@ end
 @goto st1
 @label ctr85
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 begin
 output.metadata.used_fields = 0; Ragel.@copy_from_anchor!(output.seqname)
@@ -380,7 +436,7 @@ begin
 end
 @label ctr4
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st4
 @label st4
@@ -433,7 +489,7 @@ begin
 end
 @label ctr7
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st6
 @label st6
@@ -511,7 +567,7 @@ begin
 end
 @label ctr12
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 begin
 Ragel.@copy_from_anchor!(output.metadata.name)
@@ -548,7 +604,7 @@ begin
 end
 @label ctr16
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st9
 @label st9
@@ -679,7 +735,7 @@ begin
 end
 @label ctr25
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st13
 @label st13
@@ -744,7 +800,7 @@ begin
 end
 @label ctr30
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st15
 @label st15
@@ -809,7 +865,7 @@ begin
 end
 @label ctr35
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st17
 @label st17
@@ -989,7 +1045,7 @@ begin
 end
 @label ctr45
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st21
 @label st21
@@ -1109,7 +1165,7 @@ begin
 end
 @label ctr51
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st24
 @label st24
@@ -1177,7 +1233,7 @@ begin
 end
 @label ctr44
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st26
 @label st26
@@ -1250,7 +1306,7 @@ begin
 end
 @label ctr60
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st28
 @label st28
@@ -1329,7 +1385,7 @@ begin
 end
 @label ctr66
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st30
 @label st30
@@ -1381,7 +1437,7 @@ end
 @goto st42
 @label ctr13
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 begin
 Ragel.@copy_from_anchor!(output.metadata.name)
@@ -1575,21 +1631,11 @@ end
 begin
 input.block_size_idx = 1
 input.block_first_idx = 1
-
-yield = true
-# // fbreak causes will cause the pushmark action for the next seqname
-# // to be skipped, so we do it here
 Ragel.@anchor!
-begin
-p+= 1;
-cs = 31;
-@goto _out
-
-end
-
+Ragel.@yield 31
 end
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 begin
 output.metadata.used_fields = 0; Ragel.@copy_from_anchor!(output.seqname)
@@ -1682,7 +1728,7 @@ end
 @goto st33
 @label ctr14
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 begin
 Ragel.@copy_from_anchor!(output.metadata.name)
@@ -1812,21 +1858,11 @@ end
 begin
 input.block_size_idx = 1
 input.block_first_idx = 1
-
-yield = true
-# // fbreak causes will cause the pushmark action for the next seqname
-# // to be skipped, so we do it here
 Ragel.@anchor!
-begin
-p+= 1;
-cs = 34;
-@goto _out
-
-end
-
+Ragel.@yield 34
 end
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st34
 @label st34
@@ -1875,28 +1911,18 @@ begin
 end
 @label ctr87
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st35
 @label ctr90
 begin
 input.block_size_idx = 1
 input.block_first_idx = 1
-
-yield = true
-# // fbreak causes will cause the pushmark action for the next seqname
-# // to be skipped, so we do it here
 Ragel.@anchor!
-begin
-p+= 1;
-cs = 35;
-@goto _out
-
-end
-
+Ragel.@yield 35
 end
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st35
 @label st35
@@ -2030,7 +2056,7 @@ begin
 end
 @label ctr15
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st39
 @label st39
@@ -2069,7 +2095,7 @@ begin
 end
 @label ctr86
 begin
-Ragel.anchor!(state, p)
+Ragel.@anchor!
 end
 @goto st40
 @label st40
@@ -2253,18 +2279,8 @@ if ( cs  == 42 )
 begin
 input.block_size_idx = 1
 input.block_first_idx = 1
-
-yield = true
-# // fbreak causes will cause the pushmark action for the next seqname
-# // to be skipped, so we do it here
 Ragel.@anchor!
-begin
-p+= 1;
-cs = 0;
-@goto _out
-
-end
-
+Ragel.@yield 0
 end
 
 break;
@@ -2280,82 +2296,3 @@ end
 
 end
 end)
-
-
-
-# TODO: Rewrite this stuff
-
-"""
-Write a BEDInterval in BED format.
-"""
-function write(out::IO, interval::BEDInterval)
-print(out, interval.seqname, '\t', interval.first - 1, '\t', interval.last)
-write_optional_fields(out, interval)
-write(out, '\n')
-end
-
-
-function write_optional_fields(out::IO, interval::BEDInterval, leadingtab::Bool=true)
-if interval.metadata.used_fields >= 1
-if leadingtab
-write(out, '\t')
-end
-print(out, interval.metadata.name)
-else return end
-
-if interval.metadata.used_fields >= 2
-print(out, '\t', interval.metadata.score)
-else return end
-
-if interval.metadata.used_fields >= 3
-print(out, '\t', interval.strand)
-else return end
-
-if interval.metadata.used_fields >= 4
-print(out, '\t', interval.metadata.thick_first - 1)
-else return end
-
-if interval.metadata.used_fields >= 5
-print(out, '\t', interval.metadata.thick_last)
-else return end
-
-if interval.metadata.used_fields >= 6
-item_rgb = interval.metadata.item_rgb
-print(out, '\t',
-round(Int, 255 * item_rgb.r), ',',
-round(Int, 255 * item_rgb.g), ',',
-round(Int, 255 * item_rgb.b))
-else return end
-
-if interval.metadata.used_fields >= 7
-print(out, '\t', interval.metadata.block_count)
-else return end
-
-if interval.metadata.used_fields >= 8
-block_sizes = interval.metadata.block_sizes
-if !isempty(block_sizes)
-print(out, '\t', block_sizes[1])
-for i in 2:length(block_sizes)
-print(out, ',', block_sizes[i])
-end
-end
-else return end
-
-if interval.metadata.used_fields >= 9
-block_firsts = interval.metadata.block_firsts
-if !isempty(block_firsts)
-print(out, '\t', block_firsts[1] - 1)
-for i in 2:length(block_firsts)
-print(out, ',', block_firsts[i] - 1)
-end
-end
-end
-end
-
-
-function IntervalCollection(interval_stream::BEDParser)
-intervals = collect(BEDInterval, interval_stream)
-return IntervalCollection{BEDMetadata}(intervals, true)
-end
-
-

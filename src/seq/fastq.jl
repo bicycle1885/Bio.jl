@@ -73,10 +73,7 @@ end
 	end
 
 
-"""
-Write a `FASTQSeqRecord` to `io`, as a valid FASTQ record.
-"""
-function Base.write(io::IO, seqrec::FASTQSeqRecord;
+function Base.print(io::IO, seqrec::FASTQSeqRecord;
 	offset::Integer=-1, qualheader::Bool=false)
 
 	# choose offset automatically
@@ -115,14 +112,14 @@ end
 	end
 
 
-const _fastqparser_start  = 18
-const _fastqparser_first_final  = 18
-const _fastqparser_error  = 0
-const _fastqparser_en_main  = 18
-const __fastqparser_nfa_targs = Int8[ 0, 0 ,  ]
-const __fastqparser_nfa_offsets = Int8[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,  ]
-const __fastqparser_nfa_push_actions = Int8[ 0, 0 ,  ]
-const __fastqparser_nfa_pop_trans = Int8[ 0, 0 ,  ]
+const fastqparser_start  = 18
+const fastqparser_first_final  = 18
+const fastqparser_error  = 0
+const fastqparser_en_main  = 18
+const _fastqparser_nfa_targs = Int8[ 0, 0 ,  ]
+const _fastqparser_nfa_offsets = Int8[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,  ]
+const _fastqparser_nfa_push_actions = Int8[ 0, 0 ,  ]
+const _fastqparser_nfa_pop_trans = Int8[ 0, 0 ,  ]
 "A type encapsulating the current state of a FASTQ parser"
 type FASTQParser <: AbstractParser
 state::Ragel.State
@@ -135,14 +132,10 @@ quality_encodings::QualityEncoding
 
 function FASTQParser(input::BufferedInputStream,
 	quality_encodings::QualityEncoding)
-begin
-	cs = convert( Int , _fastqparser_start );
-
-end
-return new(Ragel.State(cs, input),
-BufferedOutputStream(), BufferedOutputStream(),
-StringField(), StringField(), 0, quality_encodings)
-end
+	return new(Ragel.State(fastqparser_start, input),
+	BufferedOutputStream(), BufferedOutputStream(),
+	StringField(), StringField(), 0, quality_encodings)
+	end
 end
 
 
@@ -157,7 +150,7 @@ return FASTQParser(input, quality_encodings)
 end
 
 
-Ragel.@generate_read_fuction("_fastqparser", FASTQParser, FASTQSeqRecord,
+Ragel.@generate_read_fuction("fastqparser", FASTQParser, FASTQSeqRecord,
 begin
 begin
 if ( p == pe  )
@@ -275,7 +268,6 @@ error("Error parsing FASTQ: sequence and quality scores have non-matching identi
 end
 
 # sequence
-# copy!(output.seq, input.seqbuf.buffer, 1, input.seqbuf.position - 1)
 resize!(output.seq, input.seqbuf.position - 1)
 encode_copy!(output.seq, 1, input.seqbuf.buffer, 1, input.seqbuf.position - 1)
 
@@ -294,14 +286,8 @@ empty!(input.qualbuf)
 empty!(input.seqbuf)
 empty!(input.name2buf)
 empty!(input.desc2buf)
-yield = true;
-begin
-p+= 1;
-cs = 1;
-@goto _out
 
-end
-
+Ragel.@yield 1
 end
 @goto st1
 @label st1
@@ -1119,7 +1105,6 @@ error("Error parsing FASTQ: sequence and quality scores have non-matching identi
 end
 
 # sequence
-# copy!(output.seq, input.seqbuf.buffer, 1, input.seqbuf.position - 1)
 resize!(output.seq, input.seqbuf.position - 1)
 encode_copy!(output.seq, 1, input.seqbuf.buffer, 1, input.seqbuf.position - 1)
 
@@ -1138,14 +1123,8 @@ empty!(input.qualbuf)
 empty!(input.seqbuf)
 empty!(input.name2buf)
 empty!(input.desc2buf)
-yield = true;
-begin
-p+= 1;
-cs = 0;
-@goto _out
 
-end
-
+Ragel.@yield 0
 end
 
 break;

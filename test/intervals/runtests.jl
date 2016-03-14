@@ -372,7 +372,7 @@ end
             output = IOBuffer()
             expected_entries = Any[]
             for interval in open(filename, BED)
-                write(output, interval)
+                print(output, interval)
                 push!(expected_entries, interval)
             end
 

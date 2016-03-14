@@ -8,24 +8,20 @@ type FASTAMetadata
     description::StringField
 end
 
-
 function FASTAMetadata()
     return FASTAMetadata(StringField())
 end
-
 
 function Base.(:(==))(a::FASTAMetadata, b::FASTAMetadata)
     return a.description == b.description
 end
 
-
 function Base.copy(metadata::FASTAMetadata)
     return FASTAMetadata(copy(metadata.description))
 end
 
-
 "FASTASeqRecord{S} is a `SeqRecord` for FASTA sequences of type `S`"
-typealias FASTASeqRecord           SeqRecord{Sequence, FASTAMetadata}
+typealias FASTASeqRecord          SeqRecord{Sequence,FASTAMetadata}
 
 "A `SeqRecord` type for FASTA DNA sequences"
 typealias FASTADNASeqRecord       DNASeqRecord{FASTAMetadata}
@@ -36,40 +32,27 @@ typealias FASTARNASeqRecord       RNASeqRecord{FASTAMetadata}
 "A `SeqRecord` type for FASTA amino acid sequences"
 typealias FASTAAminoAcidSeqRecord AminoAcidSeqRecord{FASTAMetadata}
 
-function Base.show{S}(io::IO, seqrec::SeqRecord{S, FASTAMetadata})
-    write(io, ">", seqrec.name, " ", seqrec.metadata.description, "\n")
+function Base.show{S}(io::IO, seqrec::SeqRecord{S,FASTAMetadata})
+    print_header(io, seqrec)
     show(io, seqrec.seq)
 end
 
 function Base.print{S}(io::IO, seqrec::SeqRecord{S,FASTAMetadata})
-    write(io, ">", seqrec.name, " ", seqrec.metadata.description, "\n")
-    print(io, seqrec.seq)
+    print_header(io, seqrec)
+    println(io, seqrec.seq)
 end
 
-
-"Writes a FASTASeqRecord to an IO-stream (and obeys FASTAs max character constraint)"
-function Base.write{T}(io::IO, seqrec::SeqRecord{T, FASTAMetadata})
-    write(io, ">", seqrec.name)
+function print_header{S}(io::IO, seqrec::SeqRecord{S,FASTAMetadata})
+    print(io, ">", seqrec.name)
     if !isempty(seqrec.metadata.description)
-        write(io, " ", seqrec.metadata.description)
+        print(io, " ", seqrec.metadata.description)
     end
-    write(io, "\n")
-    maxchars = 79
-    counter = 1
-    len = length(seqrec.seq)
-    for nt in seqrec.seq
-        show(io, nt)
-        if counter % maxchars == 0 && counter < len
-            write(io, "\n")
-        end
-        counter += 1
-    end
-    write(io, "\n")
+    println(io)
 end
 
 
 %%{
-    machine _fastaparser;
+    machine fastaparser;
 
     action finish_match {
         if seqtype(typeof(output)) == Sequence
@@ -86,8 +69,7 @@ end
             encode_copy!(output.seq, 1, input.seqbuf.buffer, 1, length(input.seqbuf))
         end
         empty!(input.seqbuf)
-        yield = true;
-        fbreak;
+        Ragel.@yield ftargs
     }
 
     action count_line  { state.linenum += 1 }
@@ -119,29 +101,22 @@ type FASTAParser <: AbstractParser
     seqbuf::BufferedOutputStream{BufferedStreams.EmptyStream}
 
     function FASTAParser(input::BufferedInputStream)
-        %% write init;
-
-        return new(Ragel.State(cs, input), BufferedOutputStream())
+        return new(Ragel.State(fastaparser_start, input), BufferedOutputStream())
     end
 end
-
 
 function Base.eltype(::Type{FASTAParser})
     return FASTASeqRecord
 end
 
-
 function Base.open(input::BufferedInputStream, ::Type{FASTA})
     return FASTAParser(input)
 end
 
-
-typealias FASTAAnySeqRecord{S} SeqRecord{S, FASTAMetadata}
-
-Ragel.@generate_read_fuction("_fastaparser", FASTAParser, FASTAAnySeqRecord,
+Ragel.@generate_read_fuction(
+    "fastaparser",
+    FASTAParser,
+    FASTASeqRecord,
     begin
         %% write exec;
     end)
-
-
-

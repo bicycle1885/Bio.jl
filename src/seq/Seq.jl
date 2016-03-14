@@ -112,6 +112,9 @@ export
     AminoAcidAlphabet,
     CharAlphabet
 
+import ..Ragel: tryread!
+export tryread!
+
 using BufferedStreams,
     Base.Intrinsics,
     Bio.StringFields,

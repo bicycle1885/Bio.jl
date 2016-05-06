@@ -61,9 +61,9 @@ const _fastaparser_nfa_offsets = Int8[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,  ]
 const _fastaparser_nfa_push_actions = Int8[ 0, 0 ,  ]
 const _fastaparser_nfa_pop_trans = Int8[ 0, 0 ,  ]
 "A type encapsulating the current state of a FASTA parser"
-	type FASTAParser <: AbstractParser
-	state::Ragel.State
-	seqbuf::BufferedOutputStream{	BufferedStreams.EmptyStream}
+type FASTAParser <: AbstractParser
+state::Ragel.State
+seqbuf::BufferedOutputStream{BufferedStreams.EmptyStream}
 
 function FASTAParser(input::BufferedInputStream)
 	return new(Ragel.State(fastaparser_start, input), BufferedOutputStream())
@@ -72,6 +72,10 @@ end
 
 	function 	Base.eltype(::Type{FASTAParser})
 	return FASTASeqRecord
+end
+
+function Base.eof(parser::FASTAParser)
+	return eof(parser.state.stream)
 end
 
 function Base.open(input::BufferedInputStream, ::Type{FASTA})

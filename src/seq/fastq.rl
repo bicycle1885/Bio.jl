@@ -228,6 +228,10 @@ function Base.eltype(::Type{FASTQParser})
     return FASTQSeqRecord
 end
 
+function Base.eof(parser::FASTQParser)
+    return eof(parser.state.stream)
+end
+
 
 function Base.open(input::BufferedInputStream, ::Type{FASTQ};
                    quality_encodings::QualityEncoding=EMPTY_QUAL_ENCODING)

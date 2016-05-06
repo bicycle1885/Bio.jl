@@ -109,6 +109,10 @@ function Base.eltype(::Type{FASTAParser})
     return FASTASeqRecord
 end
 
+function Base.eof(parser::FASTAParser)
+    return eof(parser.state.stream)
+end
+
 function Base.open(input::BufferedInputStream, ::Type{FASTA})
     return FASTAParser(input)
 end

@@ -35,12 +35,12 @@ overwriting one entry. For files with a large number of small entries, this can
 greatly speed up reading.
 
 Instead of looping over a parser stream `read!` is called with a preallocated
-entry. `done` checks if the input still has remaining data to parse and
-`read!` attempts to read one entry into the preallocated entry:
+entry.
 ```julia
 stream = open("input.bed", BED)
 entry = BEDInterval()
-while !isnull(tryread!(stream, entry))
+while !eof(stream)
+    read!(input, entry)
     # perform some operation on `entry`
 end
 ```

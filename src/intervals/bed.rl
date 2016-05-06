@@ -253,6 +253,10 @@ function Base.eltype(::Type{BEDParser})
     return BEDInterval
 end
 
+function Base.eof(parser::BEDParser)
+    return eof(parser.state.stream)
+end
+
 function Base.open(input::BufferedInputStream, ::Type{BED})
     return BEDParser(input)
 end

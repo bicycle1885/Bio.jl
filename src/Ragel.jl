@@ -47,7 +47,7 @@ end
 
 
 # Actions
-# =======
+# -------
 
 # Macros that help make common parsing tasks more succinct
 
@@ -142,17 +142,18 @@ macro generate_read_fuction(machine_name, input_type, output_type, ragel_body)
             eof = -1
             data = state.stream.buffer
 
+            if !isopen(state.stream)
+                error("input stream is already closed")
+            end
+
             if p ≥ pe
                 # fill data buffer
-                if fillbuffer!(state.stream) == 0
+                if BufferedStreams.fillbuffer!(state.stream) == 0
                     throw(EOFError())
                 end
                 p = state.stream.position - 1
                 pe = state.stream.available
             end
-
-            # at least one byte should be available
-            @assert p < pe
 
             # run the parser until all input is consumed or a match is found
             while true
@@ -162,20 +163,20 @@ macro generate_read_fuction(machine_name, input_type, output_type, ragel_body)
                 state.stream.position = p + 1
 
                 if cs == $(error_state)
-                    error("Error parsing ", $(machine_name),
+                    error("error parsing ", $(machine_name),
                           " input on line ", state.linenum)
                 elseif p == eof  # exhausted all input data
                     if cs == $(accept_state)
                         throw(EOFError())
                     else
-                        error("Unexpected end of input while parsing ", $(machine_name))
+                        error("unexpected end of input while parsing ", $(machine_name))
                     end
                 elseif p == pe  # exhausted filled input data
                     # refill data buffer
-                    hiteof = fillbuffer!(state.stream) == 0
+                    hits_eof = BufferedStreams.fillbuffer!(state.stream) == 0
                     p = state.stream.position - 1
                     pe = state.stream.available
-                    if hiteof
+                    if hits_eof
                         eof = pe
                     end
                 else
@@ -255,7 +256,10 @@ function Base.open{T<:FileFormat}(source::Union{IO,Vector{UInt8}}, ::Type{T}; ar
     return open(BufferedInputStream(source), T; args...)
 end
 
-# iterator
+
+# Iterator
+# --------
+
 function Base.start(parser::AbstractParser)
     T = eltype(parser)
     nextone = T()

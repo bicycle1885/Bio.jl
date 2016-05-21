@@ -130,7 +130,7 @@ Base.length(ic::IntervalCollection) = ic.length
 
 
 # Iterators
-# --------
+# ---------
 
 typealias IntervalCollectionTreeIteratorState{T} IntervalTrees.IntervalBTreeIteratorState{Int64,Interval{T},64}
 
@@ -183,6 +183,10 @@ end
 function Base.done{T}(ic::IntervalCollection{T},
                       state::IntervalCollectionIteratorState{T})
     return state.i > length(ic.ordered_trees)
+end
+
+if VERSION > v"0.5-"
+    Base.iteratorsize(::IntervalCollection) = Base.SizeUnknown()
 end
 
 """
@@ -259,6 +263,10 @@ end
 
 function Base.done{S, T}(it::IntersectIterator{S, T}, state)
     return it.i > length(it.a_trees)
+end
+
+if VERSION > v"0.5-"
+    Base.iteratorsize(::IntersectIterator) = Base.SizeUnknown()
 end
 
 """
@@ -354,4 +362,8 @@ end
 function Base.done{S,T,TS,TV}(it::IntervalCollectionStreamIterator{S,T,TV},
                               state::IntervalCollectionStreamIteratorState{S,TS,TV})
     return state.intersection.index == 0
+end
+
+if VERSION > v"0.5-"
+    Base.iteratorsize(::IntervalCollectionStreamIterator) = Base.SizeUnknown()
 end

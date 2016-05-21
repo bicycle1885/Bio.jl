@@ -180,6 +180,10 @@ function Base.done{S,T,SS,TS,U,V}(it::IntervalStreamIntersectIterator{S,T,SS,TS}
     return state.a_buffer_pos > length(it.a_buffer)
 end
 
+if VERSION > v"0.5-"
+    Base.iteratorsize(::IntervalStreamIntersectIterator) = Base.SizeUnknown()
+end
+
 # TODO: IntervalCollection(stream::IntervalStream) constructor.
 
 # Helper function for coverage. Process remaining interval end points after

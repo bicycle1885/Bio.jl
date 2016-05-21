@@ -9,9 +9,10 @@ if VERSION < v"0.5-"
     precompile(Base.open, (ASCIIString, Type{Seq.FASTQ},))
     precompile(Base.open, (ASCIIString, Type{Intervals.BED},))
 else
-    precompile(Base.open, (String, Type{Seq.FASTA},))
-    precompile(Base.open, (String, Type{Seq.FASTQ},))
-    precompile(Base.open, (String, Type{Intervals.BED},))
+    # temporarily disable these precompiles to avoid a segfault (Bio.jl#191)
+    #precompile(Base.open, (String, Type{Seq.FASTA},))
+    #precompile(Base.open, (String, Type{Seq.FASTQ},))
+    #precompile(Base.open, (String, Type{Intervals.BED},))
 end
 precompile(Base.read, (Seq.FASTAParser{Seq.BioSequence},))
 precompile(Base.read, (Seq.FASTAParser{Seq.DNASequence},))
